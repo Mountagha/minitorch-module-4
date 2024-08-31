@@ -80,6 +80,9 @@ def _tensor_conv1d(
     s1 = input_strides
     s2 = weight_strides
 
+    for i in range(out_size):
+        pass
+
     # TODO: Implement for Task 4.1.
     raise NotImplementedError("Need to implement for Task 4.1")
 
