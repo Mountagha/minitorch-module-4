@@ -80,8 +80,21 @@ def _tensor_conv1d(
     s1 = input_strides
     s2 = weight_strides
 
-    for i in range(out_size):
-        pass
+    in_index = np.zeros(MAX_DIMS, np.int32)
+    out_index = np.zeros(MAX_DIMS, np.int32)
+    w_index = np.zeros(MAX_DIMS, np.int32)
+
+    # loop over the output channels.
+    for channel in range(out_channels):
+        # loop over the input tensor.
+        for i in range(width): 
+            sum = 0.0
+            # now do the kernel sliding.
+            for j in range(in_channels):
+                for k in range(kw):
+                    if i + k < width: 
+                        sum += input[i, j] * weight[i, j]
+
 
     # TODO: Implement for Task 4.1.
     raise NotImplementedError("Need to implement for Task 4.1")
