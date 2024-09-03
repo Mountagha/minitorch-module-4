@@ -1,0 +1,23 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Debugging convolutions.",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/home/mountagha/anaconda3/envs/minitorch/bin/pytest",
+            "console": "integratedTerminal",
+            "args": [
+                "${workspaceFolder}/tests/test_conv.py",
+                "-m",
+                "task4_1",
+            ],
+            "env":{
+                "NUMBA_DISABLE_JIT":"1"
+            }
+        }
+    ]
+}

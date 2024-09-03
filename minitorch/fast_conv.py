@@ -84,20 +84,30 @@ def _tensor_conv1d(
     out_index = np.zeros(MAX_DIMS, np.int32)
     w_index = np.zeros(MAX_DIMS, np.int32)
 
-    # loop over the output channels.
-    for channel in range(out_channels):
-        # loop over the input tensor.
-        for i in range(width): 
-            sum = 0.0
-            # now do the kernel sliding.
-            for j in range(in_channels):
-                for k in range(kw):
-                    if i + k < width: 
-                        sum += input[i, j] * weight[i, j]
+    # loop over the batch dimension
+    for b in range(batch):
+        # loop over the output channels.
+        for out_channel in range(out_channels):
+            # loop over the input tensor.
+            for i in range(width): 
+                sum = 0.0
+                # now do the kernel sliding.
+                for in_channel in range(in_channels):
+                    for k in range(kw):
+                        # handle padding with no padding i.e 0
+                        if i + k < width: 
+                            cur_data = input[index_to_position((b, in_channel, i + k), s1)]
+                            cur_weight = weight[index_to_position((out_channel, in_channel, k), s2)] 
+                            sum += cur_data * cur_weight
+                # fill in the output with the with the computed sum.
+                out[index_to_position((b, out_channel, i), out_strides)] = sum 
+    
+    # second attempt:
+    # for i in range(out_size):
+        # to_index(i, out_shape, out_index)
 
 
     # TODO: Implement for Task 4.1.
-    raise NotImplementedError("Need to implement for Task 4.1")
 
 
 tensor_conv1d = njit(parallel=True)(_tensor_conv1d)
