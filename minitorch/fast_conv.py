@@ -80,33 +80,29 @@ def _tensor_conv1d(
     s1 = input_strides
     s2 = weight_strides
 
-    in_index = np.zeros(MAX_DIMS, np.int32)
-    out_index = np.zeros(MAX_DIMS, np.int32)
-    w_index = np.zeros(MAX_DIMS, np.int32)
-
     # loop over the batch dimension
-    for b in range(batch):
+    for b in prange(batch):
         # loop over the output channels.
-        for out_channel in range(out_channels):
-            # loop over the input tensor.
-            for i in range(width): 
+        for out_channel in prange(out_channels):
+            # loop over the output tensor.
+            for i in prange(out_width): 
                 sum = 0.0
                 # now do the kernel sliding.
                 for in_channel in range(in_channels):
                     for k in range(kw):
-                        # handle padding with no padding i.e 0
-                        if i + k < width: 
-                            cur_data = input[index_to_position((b, in_channel, i + k), s1)]
-                            cur_weight = weight[index_to_position((out_channel, in_channel, k), s2)] 
+                        # consider whether the kernel should be applied in reverse or not.
+                        if reverse:
+                            input_idx = i - k
+                        else:
+                            input_idx = i + k
+                        # input_idx must be within input width bounds else it's considered to be 0.
+                        if 0<= input_idx < width: 
+                            cur_data = input[index_to_position(np.array([b, in_channel, input_idx], np.int32), s1)]
+                            cur_weight = weight[index_to_position(np.array([out_channel, in_channel, k], np.int32), s2)] 
                             sum += cur_data * cur_weight
-                # fill in the output with the with the computed sum.
-                out[index_to_position((b, out_channel, i), out_strides)] = sum 
+                # fill in the output with the computed sum.
+                out[index_to_position(np.array([b, out_channel, i], np.int32), out_strides)] = sum 
     
-    # second attempt:
-    # for i in range(out_size):
-        # to_index(i, out_shape, out_index)
-
-
     # TODO: Implement for Task 4.1.
 
 

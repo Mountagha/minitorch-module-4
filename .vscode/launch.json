@@ -14,6 +14,8 @@
                 "${workspaceFolder}/tests/test_conv.py",
                 "-m",
                 "task4_1",
+                "--maxfail",
+                "1",
             ],
             "env":{
                 "NUMBA_DISABLE_JIT":"1"
