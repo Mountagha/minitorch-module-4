@@ -85,23 +85,27 @@ def _tensor_conv1d(
         # loop over the output channels.
         for out_channel in prange(out_channels):
             # loop over the output tensor.
-            for i in prange(out_width): 
+            for i in range(out_width): 
                 sum = 0.0
                 # now do the kernel sliding.
                 for in_channel in range(in_channels):
+                    # now do the sliding.
                     for k in range(kw):
                         # consider whether the kernel should be applied in reverse or not.
                         if reverse:
                             input_idx = i - k
                         else:
                             input_idx = i + k
+
                         # input_idx must be within input width bounds else it's considered to be 0.
                         if 0<= input_idx < width: 
-                            cur_data = input[index_to_position(np.array([b, in_channel, input_idx], np.int32), s1)]
-                            cur_weight = weight[index_to_position(np.array([out_channel, in_channel, k], np.int32), s2)] 
+                            # compute index directly instead of using shared array and index_to_position
+                            # to avoid race condition with numba. 
+                            cur_data = input[b * s1[0] + in_channel * s1[1] + input_idx * s1[2]]
+                            cur_weight = weight[out_channel * s2[0] + in_channel * s2[1] + k * s2[2]] 
                             sum += cur_data * cur_weight
                 # fill in the output with the computed sum.
-                out[index_to_position(np.array([b, out_channel, i], np.int32), out_strides)] = sum 
+                out[b * out_strides[0] + out_channel * out_strides[1] + i * out_strides[2]] = sum 
     
     # TODO: Implement for Task 4.1.
 
@@ -225,33 +229,21 @@ def _tensor_conv2d(
     s1 = input_strides
     s2 = weight_strides
     # inners
-    # s10, s11, s12, s13 = s1[0], s1[1], s1[2], s1[3]
-    # s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
-
-    in_index = np.zeros(MAX_DIMS, np.int32)
-    w_index = np.zeros(MAX_DIMS, np.int32)
-    out_index = np.zeros(MAX_DIMS, np.int32)
+    s10, s11, s12, s13 = s1[0], s1[1], s1[2], s1[3]
+    s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
 
     # loop through batch dimension
-    for b in range(batch):
-        in_index[0] = b
-        out_index[0] = b
+    for b in prange(batch):
         # for each output channel 
-        for out_channel in range(out_channels):
-            w_index[0] = out_channel
-            out_index[1] = out_channel
+        for out_channel in prange(out_channels):
+            # loop through the spatial dimensions.
             for h in range(out_height):
                 for w in range(out_width):
-                    out_index[2] = h
-                    out_index[3] = w
                     tmp_sum = 0.0
                     for in_channel in range(in_channels):
-                        in_index[1] = in_channel
-                        w_index[1] = in_channel
+                        # do the kernel sliding.
                         for p in range(kh):
                             for q in range(kw):
-                                w_index[2] = p
-                                w_index[3] = q
                                 # consider whether the kernel should be applied in reverse or not.
                                 if reverse:
                                     h_input_idx = h - p
@@ -259,14 +251,12 @@ def _tensor_conv2d(
                                 else:
                                     h_input_idx = h + p
                                     w_input_idx = w + q
-                                in_index[2] = h_input_idx
-                                in_index[3] = w_input_idx
                                 if 0 <= h_input_idx < height and 0 <= w_input_idx < width:
-                                    cur_data = input[index_to_position(in_index, s1)]
-                                    cur_weight = weight[index_to_position(w_index, s2)]
+                                    cur_data = input[b * s10 + in_channel * s11 + h_input_idx * s12 + w_input_idx * s13]
+                                    cur_weight = weight[out_channel * s20 + in_channel * s21 + p * s22 + q * s23]
                                     tmp_sum += cur_data * cur_weight
                     # fill in the output with the computed sum.
-                    out[index_to_position(out_index, out_strides)] = tmp_sum
+                    out[b * out_strides[0] + out_channel * out_strides[1] + h * out_strides[2] + w * out_strides[3]] = tmp_sum
 
 
 tensor_conv2d = njit(parallel=True, fastmath=True)(_tensor_conv2d)
