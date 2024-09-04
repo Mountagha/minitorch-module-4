@@ -212,7 +212,7 @@ def _tensor_conv2d(
         weight_strides (Strides): strides for `input` tensor.
         reverse (bool): anchor weight at top-left or bottom-right
     """
-    batch_, out_channels, _, _ = out_shape
+    batch_, out_channels, out_height, out_width = out_shape
     batch, in_channels, height, width = input_shape
     out_channels_, in_channels_, kh, kw = weight_shape
 
@@ -225,34 +225,48 @@ def _tensor_conv2d(
     s1 = input_strides
     s2 = weight_strides
     # inners
-    s10, s11, s12, s13 = s1[0], s1[1], s1[2], s1[3]
-    s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
+    # s10, s11, s12, s13 = s1[0], s1[1], s1[2], s1[3]
+    # s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
 
-    # TODO: Implement for Task 4.2.
-    # raise NotImplementedError("Need to implement for Task 4.2")
+    in_index = np.zeros(MAX_DIMS, np.int32)
+    w_index = np.zeros(MAX_DIMS, np.int32)
+    out_index = np.zeros(MAX_DIMS, np.int32)
+
     # loop through batch dimension
     for b in range(batch):
+        in_index[0] = b
+        out_index[0] = b
         # for each output channel 
         for out_channel in range(out_channels):
-            for h in range(height):
-                for w in range(width):
+            w_index[0] = out_channel
+            out_index[1] = out_channel
+            for h in range(out_height):
+                for w in range(out_width):
+                    out_index[2] = h
+                    out_index[3] = w
                     tmp_sum = 0.0
                     for in_channel in range(in_channels):
+                        in_index[1] = in_channel
+                        w_index[1] = in_channel
                         for p in range(kh):
                             for q in range(kw):
+                                w_index[2] = p
+                                w_index[3] = q
                                 # consider whether the kernel should be applied in reverse or not.
                                 if reverse:
                                     h_input_idx = h - p
                                     w_input_idx = w - q
                                 else:
-                                    h_input_idx = h + q
+                                    h_input_idx = h + p
                                     w_input_idx = w + q
+                                in_index[2] = h_input_idx
+                                in_index[3] = w_input_idx
                                 if 0 <= h_input_idx < height and 0 <= w_input_idx < width:
-                                    cur_data = input[index_to_position(np.array([b, in_channel, h_input_idx, w_input_idx], np.int32), s1)]
-                                    cur_weight = weight[index_to_position(np.array([b, out_channel, in_channel, p, q], np.int32), s2)]
-                                    tmp_sum += cur_data + cur_weight
+                                    cur_data = input[index_to_position(in_index, s1)]
+                                    cur_weight = weight[index_to_position(w_index, s2)]
+                                    tmp_sum += cur_data * cur_weight
                     # fill in the output with the computed sum.
-                    out[index_to_position(np.array([b, out_channel, h, w], np.int32), out_strides)] = tmp_sum
+                    out[index_to_position(out_index, out_strides)] = tmp_sum
 
 
 tensor_conv2d = njit(parallel=True, fastmath=True)(_tensor_conv2d)

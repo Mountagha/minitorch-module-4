@@ -13,7 +13,7 @@
             "args": [
                 "${workspaceFolder}/tests/test_conv.py",
                 "-m",
-                "task4_1",
+                "task4_2",
                 "--maxfail",
                 "1",
             ],
