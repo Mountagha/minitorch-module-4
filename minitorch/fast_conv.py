@@ -229,7 +229,30 @@ def _tensor_conv2d(
     s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
 
     # TODO: Implement for Task 4.2.
-    raise NotImplementedError("Need to implement for Task 4.2")
+    # raise NotImplementedError("Need to implement for Task 4.2")
+    # loop through batch dimension
+    for b in range(batch):
+        # for each output channel 
+        for out_channel in range(out_channels):
+            for h in range(height):
+                for w in range(width):
+                    tmp_sum = 0.0
+                    for in_channel in range(in_channels):
+                        for p in range(kh):
+                            for q in range(kw):
+                                # consider whether the kernel should be applied in reverse or not.
+                                if reverse:
+                                    h_input_idx = h - p
+                                    w_input_idx = w - q
+                                else:
+                                    h_input_idx = h + q
+                                    w_input_idx = w + q
+                                if 0 <= h_input_idx < height and 0 <= w_input_idx < width:
+                                    cur_data = input[index_to_position(np.array([b, in_channel, h_input_idx, w_input_idx], np.int32), s1)]
+                                    cur_weight = weight[index_to_position(np.array([b, out_channel, in_channel, p, q], np.int32), s2)]
+                                    tmp_sum += cur_data + cur_weight
+                    # fill in the output with the computed sum.
+                    out[index_to_position(np.array([b, out_channel, h, w], np.int32), out_strides)] = tmp_sum
 
 
 tensor_conv2d = njit(parallel=True, fastmath=True)(_tensor_conv2d)
