@@ -11,14 +11,14 @@
             "program": "/home/mountagha/anaconda3/envs/minitorch/bin/pytest",
             "console": "integratedTerminal",
             "args": [
-                "${workspaceFolder}/tests/test_conv.py",
+                "${workspaceFolder}/tests/test_nn.py",
                 "-m",
-                "task4_2",
+                "task4_3",
                 "--maxfail",
                 "1",
             ],
             "env":{
-                "NUMBA_DISABLE_JIT":"1"
+                "NUMBA_DISABLE_JIT":"0"
             }
         }
     ]
