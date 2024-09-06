@@ -1,4 +1,5 @@
 from typing import Tuple
+import numpy as np
 
 from . import operators
 from .autodiff import Context
@@ -77,13 +78,18 @@ class Max(Function):
     def forward(ctx: Context, input: Tensor, dim: Tensor) -> Tensor:
         "Forward of max should be max reduction"
         # TODO: Implement for Task 4.4.
-        raise NotImplementedError("Need to implement for Task 4.4")
+        # raise NotImplementedError("Need to implement for Task 4.4")
+        tensor_argmax = argmax(input, dim[0])
+        ctx.save_for_backward(tensor_argmax, dim)
+        return input * tensor_argmax
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         "Backward of max should be argmax (see above)"
         # TODO: Implement for Task 4.4.
-        raise NotImplementedError("Need to implement for Task 4.4")
+        # raise NotImplementedError("Need to implement for Task 4.4")
+        tensor_argmax, dim = ctx.saved_values
+        return tensor_argmax * grad_output, 0.0
 
 
 def max(input: Tensor, dim: int) -> Tensor:
@@ -106,7 +112,22 @@ def softmax(input: Tensor, dim: int) -> Tensor:
         softmax tensor
     """
     # TODO: Implement for Task 4.4.
-    raise NotImplementedError("Need to implement for Task 4.4")
+    # raise NotImplementedError("Need to implement for Task 4.4")
+    # shift the input tensor by substracting the max value for numerical stability.
+    flatten_shape = int(np.prod(input.shape))
+    shifted_input = input - max(input.view(flatten_shape,), 0)
+
+    # compute the exponentiels values
+    exp_input = shifted_input.exp()
+
+    # compute the sum of exponentiels along the specified dimension
+    sum_exp_input = exp_input.sum(dim)
+
+    # normalize by dividing by the exponentiels by the sum of exponentiels
+    softmax_input = exp_input / sum_exp_input
+
+    return softmax_input
+
 
 
 def logsoftmax(input: Tensor, dim: int) -> Tensor:
@@ -125,7 +146,23 @@ def logsoftmax(input: Tensor, dim: int) -> Tensor:
          log of softmax tensor
     """
     # TODO: Implement for Task 4.4.
-    raise NotImplementedError("Need to implement for Task 4.4")
+    # raise NotImplementedError("Need to implement for Task 4.4")
+    # The provided link gives the trick to compute the log-sum-exp LSE as follows
+    # LSE(x1,....xn) = x* + log(exp(x1-x*) + ... + expr(xn - x*))
+    # where x* = max{x1,....,xn}
+
+    flattened_shape = int(np.prod(input.shape))
+    max_tensor = max(input.view(flattened_shape,), 0)
+    shifted_input = input - max_tensor
+
+    # compute the exponentiels values 
+    exp_input = shifted_input.exp() 
+
+    log_input = exp_input.log()
+
+    log_sum_exp_input = log_input + max_tensor
+
+    return log_sum_exp_input
 
 
 def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
@@ -141,7 +178,11 @@ def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """
     batch, channel, height, width = input.shape
     # TODO: Implement for Task 4.4.
-    raise NotImplementedError("Need to implement for Task 4.4")
+    # raise NotImplementedError("Need to implement for Task 4.4")
+    tiled_tensor, new_height, new_width = tile(input, kernel)
+    max_pooled_tensor = max(tiled_tensor, 4)
+    return max_pooled_tensor
+
 
 
 def dropout(input: Tensor, rate: float, ignore: bool = False) -> Tensor:
@@ -157,4 +198,11 @@ def dropout(input: Tensor, rate: float, ignore: bool = False) -> Tensor:
         tensor with randoom positions dropped out
     """
     # TODO: Implement for Task 4.4.
-    raise NotImplementedError("Need to implement for Task 4.4")
+    # raise NotImplementedError("Need to implement for Task 4.4")
+    if ignore:
+        return input
+    # create a mask tensor.
+    mask = (np.random.uniform(size=input.shape) > rate).astype(float)
+    dropout_tensor = input * mask
+    return dropout_tensor
+
