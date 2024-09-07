@@ -47,7 +47,6 @@ def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """
     batch, channel, height, width = input.shape
     # TODO: Implement for Task 4.3.
-    # raise NotImplementedError("Need to implement for Task 4.3")
     tile_tensor, new_height, new_width = tile(input, kernel)
     avgpool_tensor = tile_tensor.mean(4)
     return avgpool_tensor.view(batch, channel, new_height, new_width)
@@ -79,17 +78,18 @@ class Max(Function):
         "Forward of max should be max reduction"
         # TODO: Implement for Task 4.4.
         # raise NotImplementedError("Need to implement for Task 4.4")
-        tensor_argmax = argmax(input, dim[0])
-        ctx.save_for_backward(tensor_argmax, dim)
-        return input * tensor_argmax
+        dims = dim.to_numpy().astype(int).tolist()
+        max_tensor = max_reduce(input, dims[0])
+        ctx.save_for_backward(input, max_tensor)
+        return max_tensor
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         "Backward of max should be argmax (see above)"
         # TODO: Implement for Task 4.4.
         # raise NotImplementedError("Need to implement for Task 4.4")
-        tensor_argmax, dim = ctx.saved_values
-        return tensor_argmax * grad_output, 0.0
+        input, max_tensor = ctx.saved_values
+        return grad_output * (input == max_tensor), 0.0
 
 
 def max(input: Tensor, dim: int) -> Tensor:
@@ -115,7 +115,7 @@ def softmax(input: Tensor, dim: int) -> Tensor:
     # raise NotImplementedError("Need to implement for Task 4.4")
     # shift the input tensor by substracting the max value for numerical stability.
     flatten_shape = int(np.prod(input.shape))
-    shifted_input = input - max(input.view(flatten_shape,), 0)
+    shifted_input = input - max(input.contiguous().view(flatten_shape,), 0)
 
     # compute the exponentiels values
     exp_input = shifted_input.exp()
@@ -151,18 +151,25 @@ def logsoftmax(input: Tensor, dim: int) -> Tensor:
     # LSE(x1,....xn) = x* + log(exp(x1-x*) + ... + expr(xn - x*))
     # where x* = max{x1,....,xn}
 
-    flattened_shape = int(np.prod(input.shape))
-    max_tensor = max(input.view(flattened_shape,), 0)
+    # compute the max tensor
+    max_tensor = max(input, dim)
+
+    # substract the max from the input
     shifted_input = input - max_tensor
 
     # compute the exponentiels values 
     exp_input = shifted_input.exp() 
 
-    log_input = exp_input.log()
+    # sum the exponential.
+    sum_input = exp_input.sum(dim)
 
+    # take the log.
+    log_input = sum_input.log()
+
+    # add the max
     log_sum_exp_input = log_input + max_tensor
 
-    return log_sum_exp_input
+    return input - log_sum_exp_input
 
 
 def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
@@ -178,10 +185,9 @@ def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """
     batch, channel, height, width = input.shape
     # TODO: Implement for Task 4.4.
-    # raise NotImplementedError("Need to implement for Task 4.4")
     tiled_tensor, new_height, new_width = tile(input, kernel)
     max_pooled_tensor = max(tiled_tensor, 4)
-    return max_pooled_tensor
+    return max_pooled_tensor.view(batch, channel, new_height, new_width)
 
 
 
@@ -202,7 +208,8 @@ def dropout(input: Tensor, rate: float, ignore: bool = False) -> Tensor:
     if ignore:
         return input
     # create a mask tensor.
-    mask = (np.random.uniform(size=input.shape) > rate).astype(float)
+    mask = rand(input.shape) > rate
+    # apply the filter to drop all values that correspond to false (0)
     dropout_tensor = input * mask
     return dropout_tensor
 
