@@ -1,4 +1,5 @@
 from typing import Tuple
+
 import numpy as np
 
 from . import operators
@@ -30,9 +31,14 @@ def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
     input = input.contiguous()
     # splitting height and width by kh and kw respectively.
     input = input.view(batch, channel, new_height, kh, new_width, kw)
-    input = input.permute(0, 1, 2, 4, 3, 5)     # moving kh and kw at the end
-    input = input.contiguous() # so that we can apply view again.
-    return input.view(batch, channel, new_height, new_width, kh * kw), new_height, new_width
+    input = input.permute(0, 1, 2, 4, 3, 5)  # moving kh and kw at the end
+    input = input.contiguous()  # so that we can apply view again.
+    return (
+        input.view(batch, channel, new_height, new_width, kh * kw),
+        new_height,
+        new_width,
+    )
+
 
 def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """
@@ -115,7 +121,12 @@ def softmax(input: Tensor, dim: int) -> Tensor:
     # raise NotImplementedError("Need to implement for Task 4.4")
     # shift the input tensor by substracting the max value for numerical stability.
     flatten_shape = int(np.prod(input.shape))
-    shifted_input = input - max(input.contiguous().view(flatten_shape,), 0)
+    shifted_input = input - max(
+        input.contiguous().view(
+            flatten_shape,
+        ),
+        0,
+    )
 
     # compute the exponentiels values
     exp_input = shifted_input.exp()
@@ -127,7 +138,6 @@ def softmax(input: Tensor, dim: int) -> Tensor:
     softmax_input = exp_input / sum_exp_input
 
     return softmax_input
-
 
 
 def logsoftmax(input: Tensor, dim: int) -> Tensor:
@@ -157,8 +167,8 @@ def logsoftmax(input: Tensor, dim: int) -> Tensor:
     # substract the max from the input
     shifted_input = input - max_tensor
 
-    # compute the exponentiels values 
-    exp_input = shifted_input.exp() 
+    # compute the exponentiels values
+    exp_input = shifted_input.exp()
 
     # sum the exponential.
     sum_input = exp_input.sum(dim)
@@ -190,7 +200,6 @@ def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     return max_pooled_tensor.view(batch, channel, new_height, new_width)
 
 
-
 def dropout(input: Tensor, rate: float, ignore: bool = False) -> Tensor:
     """
     Dropout positions based on random noise.
@@ -212,4 +221,3 @@ def dropout(input: Tensor, rate: float, ignore: bool = False) -> Tensor:
     # apply the filter to drop all values that correspond to false (0)
     dropout_tensor = input * mask
     return dropout_tensor
-
